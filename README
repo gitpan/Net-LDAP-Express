@@ -1,5 +1,5 @@
-Net::LDAP::Express version 0.01
-============================
+Net::LDAP::Express version 0.02
+===============================
 
     Net::LDAP::Express is an alternative interface to the fantastic
     Graham Barr's Net::LDAP, that simplifies the tasks of adding and
@@ -44,13 +44,18 @@ Net::LDAP::Express version 0.01
 
 NOTES ABOUT THIS RELEASE
 
-This is the first release of Net::LDAP::Express. The target for this
-release is to check that it works, that it proves useful in its target
-cases and that it hasn't critical bugs. It isn't optimized. Maybe the
-code isn't that clean. Maybe it even isn't elegant. I consider these
-things minor bugs that I'll correct along the way. For the moment,
-please check that this code works and only after that give me all the
-hints you find useful to make the code in this module better.
+This is the second release of Net::LDAP::Express. The first release
+seemed to work well, so the target for this second release is to see
+if it proves useful to be useful in its target cases and that it
+hasn't critical bugs.
+
+It isn't optimized, but I am beginning to working on it.
+
+Maybe the code isn't that clean. Maybe it even isn't elegant. I
+consider these things minor bugs that I'll correct along the way. For
+the moment, please check that this code works and only after that give
+me all the hints you find useful to make the code in this module
+better.
 
 This module is not (yet?) part of the perl-ldap distribution and is
 being developed indipendendently, at the moment.
@@ -72,13 +77,13 @@ variables -see TESTING THE SOURCE
 TESTING THE SOURCE
 
 This module's tests require that you have access to a directory server
-to test the functionalities. If you don't test some environment
-variables before running "make test" they will simply check for a correct
-installation of the module and for the presence of some other modules
-that Net::LDAP::Express depends upon.
+to test the functionalities. If you don't set some environment
+variables before running "make test", the tests will just check for a
+correct installation of the module and for the presence of some other
+modules that Net::LDAP::Express depends upon.
 
-To effectively run the tests just prepend to "make test" an
-environment variable assignment, like
+To effectively run the tests just prepend to "make test" a sensible
+assignment to the TEST_HOST environment variable assignment, like in
 
 TEST_HOST='ldap.server.com' make test
 
@@ -88,12 +93,14 @@ TEST_PORT variable:
 
 TEST_HOST='ldap.server.com' TEST_PORT=1389 make test
 
-The scripts will try to use ou=simple,o=test as their base subtree. In
-case this isn't the case, just use a TEST_BASE environment variable
-with the base subtree.
+The scripts will try to use ou=simple,o=test as their base subtree
+(the ou=simple is there because the module was supposed to be called
+Net::LDAP::Simple in the beginning). If you want to change it, just
+use a TEST_BASE environment variable with the base subtree of your
+choice.
 
 Some tests will try to create and modify entries on the directory
-server, that could require some privileges. The test script will use
+server, and this requires some privileges. The test script will use
 cn=admin,o=test as bind DN and "secret" as password; again, if this
 isn't the case you can simply prepend an assignment to TEST_BINDDN and
 TEST_BINDPW.
@@ -104,6 +111,35 @@ DEPENDENCIES
 This module requires these other modules and libraries:
 
   Net::LDAP and all the perl-ldap distribution by Graham Barr
+  Test::More for "make test"
+
+
+CREDITS
+
+I would like to thank all the people that helped me with their
+suggestions and opinions. Among them:
+
+* submersible_toaster of perlmonks
+  (http://perlmonks.org/index.pl?node_id=195273), that first gave me
+  his encouragement to develop this module; 
+
+* Jim Harle, Christopher A. Bongaarts from the perl-ldap mailing list;
+
+* Ken Williams from the module-authors mailing list;
+
+* Frederik Uyttersprot from the comp.lang.perl.modules newsgroup;
+
+* Chris Ridd, William R. Ward for their feedback about the name;
+
+* Italian Perl Mongers, in particular Stefano Rodighiero (larsen),
+  TheHobbit and bepi for their suggestions and contribution;
+
+* my friend and brother Stefano Sanna;
+
+* John Woodell, that suggested me to add the "sort_by" feature;
+
+* and, obviously, Graham Barr! 
+
 
 COPYRIGHT AND LICENCE
 
@@ -124,3 +160,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
 
+VERSION INFORMATION
+
+$Id: README,v 1.4 2003/05/18 22:31:39 bronto Exp $

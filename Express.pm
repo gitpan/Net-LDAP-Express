@@ -1,15 +1,17 @@
 package Net::LDAP::Express;
 
+# $Id: Express.pm,v 1.4 2003/05/18 22:22:54 bronto Exp $
+
 use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Carp ;
 
 use base 'Net::LDAP' ;
-use constant DEBUG => 1 ;
+use constant DEBUG => 0 ;
 
 # Preloaded methods go here.
 sub new {
@@ -60,7 +62,7 @@ sub new {
   ##! I should use accessors here... maybe building a code string
   ##! and then passing it to eval.
   while (my ($parm,$value) = each %localparms) {
-    $ldap->{"net_ldap_simple_$parm"} = $value ;
+    $ldap->{"net_ldap_express_$parm"} = $value ;
   }
   return $ldap ;
 }
@@ -163,25 +165,12 @@ sub search {
     $query = shift ;
   }
 
-  my %parms = @_ ;
-
-  # Use object's base unless otherwise specified
-  $parms{base} ||= $ldap->_base ;
+  # Load defaults from _makesearchparms, override them with the values
+  # in @_.
+  my %parms = ($ldap->_makesearchparms,@_) ;
 
   # What about filters?
   $parms{filter} ||= $ldap->_makefilter($query) ;
-
-  # Compose an attrs parameter, unless already present and only if
-  # searchextras or onlyattrs have been specified at object creation
-  unless (exists $parms{attrs}) {
-    if (my $onlythese = $ldap->_onlyattrs) {
-      $parms{attrs} = $onlythese ;
-    }
-
-    if (my $extras = $ldap->_searchextras) {
-      $parms{attrs} = ['*',@$extras]
-    }
-  }
 
   return $ldap->SUPER::search(%parms) ;
 }
@@ -189,22 +178,10 @@ sub search {
 sub simplesearch {
   my $ldap    = shift ;
   my ($query) = @_ ;
-  my %parms ;
-
-  # Set search base
-  $parms{base} = $ldap->_base ;
+  my %parms = $ldap->_makesearchparms;
 
   # Set filter
   $parms{filter} = $ldap->_makefilter($query) ;
-
-  # Set attrs if searchextras or onlyattrs are specified
-  if (my $onlythese = $ldap->_onlyattrs) {
-    $parms{attrs} = $onlythese ;
-  }
-
-  if (my $extras = $ldap->_searchextras) {
-    $parms{attrs} = ['*',@$extras] ;
-  }
 
   my $msg = $ldap->SUPER::search(%parms) ;
   if ($msg->is_error) {
@@ -213,7 +190,10 @@ sub simplesearch {
   }
 
   $ldap->_seterr(0) ;
-  return [$msg->entries] ;
+
+  return $ldap->_sort_by ?
+    [$msg->sorted(@{$ldap->_sort_by})] :
+      [$msg->entries] ;
 }
 
 
@@ -281,18 +261,19 @@ BEGIN {
 	    searchmatch  => 'opt',
 	    searchextras => 'opt',
 	    onlyattrs    => 'opt',
+	    sort_by      => 'opt',
 	   )
   }
 
   carp __PACKAGE__.": Dynamically building accessors at compile time"
-    if $^W ;
+    if $^W and DEBUG ;
 
   {
     no strict 'refs' ;
     my %myParms = _new_parms() ;
     foreach my $attr (keys %myParms) {
       my $subname = "_$attr" ;
-      my $parm    = "net_ldap_simple_$attr" ;
+      my $parm    = "net_ldap_express_$attr" ;
       *$subname = sub {
 	my $ldap = shift ;
 	return $ldap->{$parm} if @_ == 0 ;
@@ -336,6 +317,46 @@ sub _makefilter {
   return $filter ;
 }
 
+sub _makesearchparms {
+  my $ldap = shift ;
+
+  unless (exists $ldap->{net_ldap_express_searchparms}) {
+    my %parms ;
+
+    # Set search base
+    $parms{base} = $ldap->_base ;
+
+    # Retrieve onlyattrs, or all; add searchextras if needed
+    my $attrs = $ldap->_onlyattrs ? $ldap->_onlyattrs : ['*'] ;
+
+    if (my $extras = $ldap->_searchextras) {
+      push @$attrs,@$extras ;
+    }
+
+    # Now what if one specifies also sort_by, and the attributes are not
+    # in $attrs? The sorting would fail...  First, let's see if the
+    # first element of @$attrs is a '*', in that case just skip
+    if (my $sortattrs = $ldap->_sort_by) {
+      unless ($attrs->[0] eq '*') {
+	# We have to compare each @$sortattrs element with the elements
+	# of @$attrs; better to have some precompiled patterns handy.
+	my @qrattrs = map qr/^$_$/i,@$attrs ;
+	foreach my $attr (@$sortattrs) {
+	  push @$attrs,$attr unless grep $attr =~ $_ ,@qrattrs ;
+	}
+      }
+    }
+
+    # Now we can assign the resulting $attrs to $parms{attrs}...
+    $parms{attrs} = $attrs ;
+
+    $ldap->{net_ldap_express_searchparms} = \%parms ;
+  }
+
+  return %{$ldap->{net_ldap_express_searchparms}} ;
+}
+
+
 1;
 __END__
 
@@ -347,20 +368,14 @@ Net::LDAP::Express - Simplified interface for Net::LDAP
 
   use Net::LDAP::Express;
 
-  # connect and bind to a directory server
-  # bindDN and bindpw are optional, if you don't specify them an
-  # anonymous bind is performed
-  # base is the base subtree for searches, it is an optional parameter
-  # searchattrs are the attributes that are used by the simplesearch()
-  # method.
   eval {
     my $ldap =
       Net::LDAP::Express->new(host => 'localhost',
-                             bindDN => 'cn=admin,ou=People,dc=me',
-                             bindpw => 'secret',
-                             base   => 'ou=People,dc=me',
-                             searchattrs => [qw(cn uid loginname)],
-                             %parms) ; # params for Net::LDAP::new
+			      bindDN => 'cn=admin,ou=People,dc=me',
+			      bindpw => 'secret',
+			      base   => 'ou=People,dc=me',
+			      searchattrs => [qw(cn uid loginname)],
+			      %parms) ; # params for Net::LDAP::new
   } ;
 
   if ($@) {
@@ -399,6 +414,16 @@ Net::LDAP::Express - Simplified interface for Net::LDAP
   # and nothing else...
   $ldap->rename($entry,$newrdn) ;
 
+  # Ask for just a few attributes, sort results
+  $ldap = Net::LDAP::Express->new(host        => $server,
+				  port        => $port,
+				  base        => $base,
+				  bindDN      => $binddn,
+				  bindpw      => $bindpw,
+				  onlyattrs   => \@only,
+				  sort_by     => \@sortby,
+				  searchattrs => \@search) ;
+  my $entries = $ldap->simplesearch('person') ;
 
 
 =head1 DESCRIPTION
@@ -495,7 +520,7 @@ bind password in case of authenticated bind
 
 =item base
 
-base subtree for searches. ***(Mandatory or optional?)
+base subtree for searches. Mandatory.
 
 =item searchattrs
 
@@ -522,10 +547,17 @@ default ones.
 =item onlyattrs
 
 At the opposite of searchextras: if you need just a few attributes to
-be returned for each entry, you can specify them here. Please note
+be returned for each entry, you can specify them here. Note
 that it doesn't make much sense to include both searchextras and
-onlyattrs, and that at the moment searchextras will override
 onlyattrs.
+
+=item sort_by
+
+If you specify this parameter with a list of attributes, the
+simplesearch method will return the entries sorted by the attributes
+given. Note that if you also specify onlyattrs and there are
+attributes in sort_by that are not in onlyattrs, they will be added to
+allow the Net::LDAP::Search::sorted method to work.
 
 =back
 
@@ -613,7 +645,7 @@ Returns last error's code
 
 =head1 AUTHOR
 
-Marco Marongiu, E<lt>bronto@crs4.itE<gt>
+Marco Marongiu, E<lt>bronto@cpan.orgE<gt>
 
 =head1 SEE ALSO
 

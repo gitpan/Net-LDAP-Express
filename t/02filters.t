@@ -1,4 +1,6 @@
-use Test::More tests => 20 ; # 20
+use Test::More tests => 20 ;
+
+# $Id: 02filters.t,v 1.2 2003/05/17 21:45:11 bronto Exp $
 
 my $fulltest  = 20 ;
 my $shorttest = 1 ;
@@ -91,14 +93,14 @@ SKIP: {
 
   ########################################################################
   # Filters are what they should
-  diag('Filters are printed before they undergo the test') ;
+  #diag('Filters are printed before they undergo the test') ;
   foreach my $b (@bools) {
     foreach my $m (@match) {
       while (my ($f,$p) = each %{$tests{$b}{$m}}) {
 	my $r = Net::LDAP::Express
 	  ->new(%parms,%$p)
 	    ->_makefilter($word) ;
-	diag($f) ;
+	#diag($f) ;
 	is($r,$f,
 	   "bool: $b, attrs: ".scalar(@{$p->{searchattrs}}).
 	   ", match: $matchname{$m}") ;
