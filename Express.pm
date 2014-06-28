@@ -1,12 +1,10 @@
 package Net::LDAP::Express;
 
-# $Id: Express.pm,v 1.6 2004/12/04 18:10:20 bronto Exp $
-
 use 5.006;
 use strict;
 use warnings;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 use Carp ;
 
@@ -43,7 +41,6 @@ sub new {
 
   # try connection
   my $ldap = $class->SUPER::new($host,%args) ;
-  eval { $ldap->isa('Net::LDAP') } ;
   croak "Cannot connect to $host: $@" if $@ ;
 
   # bind if necessary
@@ -664,6 +661,8 @@ Returns last error's code
 =head1 AUTHOR
 
 Marco Marongiu, E<lt>bronto@cpan.orgE<gt>
+
+"sort_by" feature kindly suggested by John Woodell
 
 Original patch for exact matching (code and documentation) was
 kindly contributed by Gordon Lack.
